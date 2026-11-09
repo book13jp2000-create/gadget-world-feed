@@ -1,0 +1,47 @@
+# PCパーツの最安値を1日1回取り、data ブランチの parts.json に足す（履歴の原本は data ブランチ）。終わったら feed（Pages）を動かす
+# 要るもの：リポジトリの Settings → Secrets and variables → Actions に YAHOO_APPID（Yahoo!デベロッパーネットワークの Client ID）
+name: parts
+on:
+  schedule:
+    - cron: '37 23 * * *' # 日本時間 8:37
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: parts
+  cancel-in-progress: false
+jobs:
+  parts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: data ブランチを取り出す（無ければ作る）
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git worktree add data FETCH_HEAD
+          else
+            git worktree add --detach data && (cd data && git checkout --orphan data && git rm -rfq . )
+          fi
+      - name: 取る
+        env:
+          YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
+          PREV_FILE: data/parts.json
+        run: |
+          test -n "$YAHOO_APPID" || { echo "YAHOO_APPID がない"; exit 1; }
+          node parts.js data
+      - name: data ブランチに保存
+        run: |
+          cd data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add parts.json
+          git commit -m "parts $(date -u +%F)" || exit 0
+          git push origin HEAD:data
+      - name: Pages を作り直す
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run feed.yml --ref ${{ github.ref_name }}

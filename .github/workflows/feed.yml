@@ -1,0 +1,48 @@
+# 株価などを取って GitHub Pages に出す（公開リポジトリ gadget-world-feed で動かす）
+# 読む側：VRChat のワールド（https://book13jp2000-create.github.io/gadget-world-feed/stocks.json）
+name: feed
+on:
+  schedule:
+    # 米国市場の時間帯（UTC 13:00〜21:59、月〜金）は15分ごと。夏時間・冬時間どちらも含む。毎時0分は GitHub が混むのでずらす
+    - cron: '2,17,32,47 13-21 * * 1-5'
+    # 東京市場の時間帯（日本時間 9:00〜15:30 ＝ UTC 0〜6時、月〜金）も15分ごと
+    - cron: '2,17,32,47 0-6 * * 1-5'
+    # それ以外は控えめに（毎日3時間ごと。平日の昼と重なる回はそのまま）
+    - cron: '7 */3 * * *'
+    # 注意：公開リポジトリで60日間コミットがないと schedule が止まる（GitHub の仕様）。止まったら Actions の画面で有効にし直す
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node stocks.js site
+      # PCパーツは parts.yml が1日1回 data ブランチに書く。Pages は毎回まるごと置き換わるので、ここで一緒に載せる（無ければ載せない）
+      - name: parts.json を data ブランチから
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git show FETCH_HEAD:parts.json > site/parts.json 2>/dev/null && node -e "const j=require('./site/parts.json'); if(j.v!==1||j.sample) process.exit(1)" || rm -f site/parts.json
+          fi
+      - run: cp index.html site/ 2>/dev/null || true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
