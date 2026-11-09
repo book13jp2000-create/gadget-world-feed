@@ -17,6 +17,14 @@ const GROUPS = [
     ['285A.T', 'Kioxia'], ['6723.T', 'Renesas'], ['4063.T', 'Shin-Etsu Chem'], ['6758.T', 'Sony Group'],
     ['9984.T', 'SoftBank Group'], ['7974.T', 'Nintendo'],
   ] },
+  // 11/10 本人「半導体や VR 関連の ETF も入れていいんじゃない？」→ ガジェットに関係する ETF を米国・日本から10本。
+  // 板の字体は英数字だけなので名前は英字（(US)・(JP) で上場先を示す）。価格は通貨が混ざるので小数なし・通貨なし（記号が英字なら米ドル、数字なら円）
+  // VR 関連の米国 ETF「VR」は上場廃止で取れないので、メタバースの METV
+  { id: 'ETF', title: 'GADGET ETF', cur: '', dec: 0, list: [
+    ['SOXX', 'Semis (US)'], ['SMH', 'Semis VanEck (US)'], ['2644.T', 'Semis (JP)'], ['METV', 'Metaverse/VR (US)'],
+    ['VGT', 'Info Tech (US)'], ['2854.T', 'Tech Top20 (JP)'], ['HERO', 'Games/eSports (US)'], ['2640.T', 'Games/Anime (JP)'],
+    ['BOTZ', 'Robotics/AI (US)'], ['1625.T', 'Electronics (JP)'],
+  ] },
 ];
 const outDir = process.argv[2] || path.join(__dirname, 'out');
 
