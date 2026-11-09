@@ -1,0 +1,50 @@
+# 週刊チラシ（flyer.png）を毎週土曜の朝に作り、data ブランチに置く（履歴 flyer-history.json も data ブランチ）。終わったら feed（Pages）を動かす
+# YAHOO_APPID（Secrets）が無いうちは「準備中」のチラシ（価格なし）。RAKUTEN_APP_ID があれば楽天市場の価格も見る
+name: flyer
+on:
+  schedule:
+    - cron: '7 22 * * 5' # 日本時間 土曜 7:07
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: flyer
+  cancel-in-progress: false
+jobs:
+  flyer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 日本語の字体
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk >/dev/null
+      - name: data ブランチを取り出す（無ければ作る）
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git worktree add data FETCH_HEAD
+          else
+            git worktree add --detach data && (cd data && git checkout --orphan data && git rm -rfq . )
+          fi
+      - name: 作る
+        env:
+          YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          PREV_FILE: data/flyer-history.json
+          CHROME: google-chrome
+        run: node flyer.js data
+      - name: data ブランチに保存
+        run: |
+          cd data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flyer.png flyer.json
+          [ -f flyer-history.json ] && git add flyer-history.json
+          git commit -m "flyer $(date -u +%F)" || exit 0
+          git push origin HEAD:data
+      - name: Pages を作り直す
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run feed.yml --ref ${{ github.ref_name }}

@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
+// 11/10 本人「日本語で」→ j（板に出す名前）を足した。型番だけの物は n と同じ
 // 品目：検索語・名前に必ず含む語（付属品や別の型番を除く）・価格の下限と上限（円。中古・部品・誤登録を除く）
 const PARTS = [
   // グラボ
@@ -30,17 +31,17 @@ const PARTS = [
   { id: '265k', n: 'Core Ultra 7 265K', q: 'Core Ultra 7 265K BOX', re: /265K(?![0-9A-Z])/i, not: /265KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 35000, max: 150000 },
   { id: '245k', n: 'Core Ultra 5 245K', q: 'Core Ultra 5 245K BOX', re: /245K(?![0-9A-Z])/i, not: /245KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   // メモリ（デスクトップ用の2枚組）・SSD（M.2 NVMe）
-  { id: 'ddr5', n: 'DDR5 32GB (16GBx2)', q: 'DDR5 32GB 16GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)|(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 8000, max: 120000 },
-  { id: 'ddr5-64', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 200000 },
-  { id: 'ssd1tb', n: 'NVMe SSD 1TB', q: 'NVMe SSD 1TB M.2 Gen4', re: /(?<![0-9])1\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])1\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 6000, max: 60000 },
-  { id: 'ssd2tb', n: 'NVMe SSD 2TB', q: 'NVMe SSD 2TB M.2 Gen4', re: /(?<![0-9])2\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])2\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ|ヒートシンクのみ/i, min: 10000, max: 120000 },
-  { id: 'ssd4tb', n: 'NVMe SSD 4TB', q: 'NVMe SSD 4TB M.2 Gen4', re: /(?<![0-9])4\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])4\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 20000, max: 200000 },
+  { id: 'ddr5', j: 'DDR5 メモリ 32GB（16GB×2）', n: 'DDR5 32GB (16GBx2)', q: 'DDR5 32GB 16GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)|(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 8000, max: 120000 },
+  { id: 'ddr5-64', j: 'DDR5 メモリ 64GB（32GB×2）', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 200000 },
+  { id: 'ssd1tb', j: 'NVMe SSD 1TB', n: 'NVMe SSD 1TB', q: 'NVMe SSD 1TB M.2 Gen4', re: /(?<![0-9])1\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])1\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 6000, max: 60000 },
+  { id: 'ssd2tb', j: 'NVMe SSD 2TB', n: 'NVMe SSD 2TB', q: 'NVMe SSD 2TB M.2 Gen4', re: /(?<![0-9])2\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])2\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ|ヒートシンクのみ/i, min: 10000, max: 120000 },
+  { id: 'ssd4tb', j: 'NVMe SSD 4TB', n: 'NVMe SSD 4TB', q: 'NVMe SSD 4TB M.2 Gen4', re: /(?<![0-9])4\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])4\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 20000, max: 200000 },
   // 電源・マザーボード・CPU クーラー・モニター
-  { id: 'psu850', n: 'PSU 850W Gold', q: '電源ユニット 850W 80PLUS GOLD ATX', re: /850\s*W[\s\S]*GOLD|GOLD[\s\S]*850\s*W/i, not: /PC本体|中古|ケース付|SFX/i, min: 8000, max: 60000 },
-  { id: 'b850', n: 'B850 Motherboard', q: 'B850 マザーボード AM5 ATX', re: /B850(?![0-9])/i, not: /PC本体|CPUセット|セット品|中古/i, min: 15000, max: 80000 },
-  { id: 'z890', n: 'Z890 Motherboard', q: 'Z890 マザーボード LGA1851 ATX', re: /Z890(?![0-9])/i, not: /PC本体|CPUセット|セット品|中古/i, min: 25000, max: 150000 },
-  { id: 'aio360', n: 'AIO Cooler 360mm', q: '簡易水冷 CPUクーラー 360mm', re: /360\s*mm|360mm/i, not: /PC本体|ファン単体|ラジエーターのみ/i, min: 8000, max: 60000 },
-  { id: 'mon27q', n: '27in WQHD 165Hz+', q: 'ゲーミングモニター 27インチ WQHD 165Hz', re: /27[\s\S]*(WQHD|2560)[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz|(WQHD|2560)[\s\S]*27[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz/i, not: /PC本体|中古|アーム単体/i, min: 20000, max: 150000 },
+  { id: 'psu850', j: '電源 850W GOLD', n: 'PSU 850W Gold', q: '電源ユニット 850W 80PLUS GOLD ATX', re: /850\s*W[\s\S]*GOLD|GOLD[\s\S]*850\s*W/i, not: /PC本体|中古|ケース付|SFX/i, min: 8000, max: 60000 },
+  { id: 'b850', j: 'B850 マザーボード', n: 'B850 Motherboard', q: 'B850 マザーボード AM5 ATX', re: /B850(?![0-9])/i, not: /PC本体|CPUセット|セット品|中古/i, min: 15000, max: 80000 },
+  { id: 'z890', j: 'Z890 マザーボード', n: 'Z890 Motherboard', q: 'Z890 マザーボード LGA1851 ATX', re: /Z890(?![0-9])/i, not: /PC本体|CPUセット|セット品|中古/i, min: 25000, max: 150000 },
+  { id: 'aio360', j: '簡易水冷 360mm', n: 'AIO Cooler 360mm', q: '簡易水冷 CPUクーラー 360mm', re: /360\s*mm|360mm/i, not: /PC本体|ファン単体|ラジエーターのみ/i, min: 8000, max: 60000 },
+  { id: 'mon27q', j: '27型 WQHD 165Hz以上', n: '27in WQHD 165Hz+', q: 'ゲーミングモニター 27インチ WQHD 165Hz', re: /27[\s\S]*(WQHD|2560)[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz|(WQHD|2560)[\s\S]*27[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz/i, not: /PC本体|中古|アーム単体/i, min: 20000, max: 150000 },
 ];
 const PREV_FILE = process.env.PREV_FILE || '';
 const DAYS = 30;
@@ -133,7 +134,7 @@ function change30(hist, today) {
     }
     const last = cur ? cur.p : null;
     items.push({
-      id: part.id, n: part.n,
+      id: part.id, n: part.n, j: part.j || part.n, // j：板に出す日本語の名前（型番はそのまま）
       p: last, // 今日の最安値（円）。取れなかった日は null（前の日の値を今日の値として出さない）
       shop: cur ? cur.shop : '', pn: cur ? cur.pn || '' : '', url: cur ? cur.url || '' : '', // 確かめ用（板には出さない）
       d30: last ? change30(hist, today) : null, // 30日前と比べた変化％。履歴が7日分より短ければ null

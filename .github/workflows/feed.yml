@@ -33,6 +33,13 @@ jobs:
           if git fetch --depth=1 origin data 2>/dev/null; then
             git show FETCH_HEAD:parts.json > site/parts.json 2>/dev/null && node -e "const j=require('./site/parts.json'); if(j.v!==1||j.sample) process.exit(1)" || rm -f site/parts.json
           fi
+      # 週刊チラシ（flyer.yml が土曜に data ブランチに置く）。無ければ載せない（ワールドの板は「準備中」）
+      - name: flyer.png を data ブランチから
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git show FETCH_HEAD:flyer.png > site/flyer.png 2>/dev/null || rm -f site/flyer.png
+            git show FETCH_HEAD:flyer.json > site/flyer.json 2>/dev/null || rm -f site/flyer.json
+          fi
       - run: cp index.html site/ 2>/dev/null || true
       - uses: actions/upload-pages-artifact@v3
         with:
