@@ -181,7 +181,7 @@ const yen = (v) => v.toLocaleString('ja-JP');
 async function getJson(u) {
   for (let t = 0; t < 3; t++) {
     const res = await fetch(u, { signal: AbortSignal.timeout(15000) });
-    if (res.status === 429) { await sleep(5000 * (t + 1)); continue; }
+    if (res.status === 429) { await sleep(8000 * (t + 1)); continue; } // 混んでいるときは長めに待って取り直す
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
@@ -234,7 +234,7 @@ async function collect() {
     for (const spec of g.items) {
       let best = null;
       try { best = await yahoo(spec); } catch (e) { console.error('Yahoo 失敗', spec[0], e.message); }
-      await sleep(1100); // 1秒に1回まで
+      await sleep(1600); // 1秒に1回までの決まり。11/13 の初回で 429 が出たので間を広げた
       if (RAKUTEN) {
         try { const r = await rakuten(spec); if (r && (!best || r.p < best.p)) best = r; } catch (e) { console.error('楽天 失敗', spec[0], e.message); }
         await sleep(1100);

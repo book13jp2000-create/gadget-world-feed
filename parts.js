@@ -20,7 +20,7 @@ const PARTS = [
   { id: 'rtx5060ti', n: 'RTX 5060 Ti', q: 'RTX 5060 Ti グラフィックボード', re: /RTX\s*5060\s*Ti(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 50000, max: 200000 },
   { id: 'rtx5060', n: 'RTX 5060', q: 'RTX 5060 グラフィックボード', re: /RTX\s*5060(?!\s*Ti(?![A-Z]))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 35000, max: 150000 },
   { id: 'rx9070xt', n: 'RX 9070 XT', q: 'Radeon RX 9070 XT', re: /RX\s*9070\s*XT(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 70000, max: 300000 },
-  { id: 'rx9070', n: 'RX 9070', q: 'Radeon RX 9070 グラフィックボード', re: /RX\s*9070(?!\s*XT)(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 250000 },
+  { id: 'rx9070', n: 'RX 9070', q: 'Radeon RX 9070 グラフィックボード', re: /RX\s*9070(?!\s*(XT|GRE))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 250000 },
   { id: 'rx9060xt', n: 'RX 9060 XT', q: 'Radeon RX 9060 XT', re: /RX\s*9060\s*XT(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 35000, max: 150000 },
   // CPU
   { id: '9950x3d', n: 'Ryzen 9 9950X3D', q: 'Ryzen 9 9950X3D BOX', re: /9950X3D(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 80000, max: 300000 },

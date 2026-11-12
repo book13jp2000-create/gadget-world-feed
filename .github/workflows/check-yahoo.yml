@@ -11,7 +11,7 @@ jobs:
           YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
         run: |
           echo "長さ: ${#YAHOO_APPID}"
-          case "$YAHOO_APPID" in dj0*) echo "形: Client ID らしい（dj0 で始まる）";; *) echo "形: Client ID の形ではない";; esac
+          echo "（形は確かめない：今の Client ID は dj0 で始まらないことがある）"
           case "$YAHOO_APPID" in *" "*|*$'\n'*) echo "空白か改行が入っている";; esac
           code=$(curl -s -o body.txt -w "%{http_code}" "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid=$YAHOO_APPID&query=RTX%205080&results=1")
           echo "HTTP $code"; head -c 300 body.txt | sed "s/$YAHOO_APPID/***/g"; echo
