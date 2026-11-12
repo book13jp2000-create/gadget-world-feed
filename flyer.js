@@ -243,7 +243,7 @@ async function collect() {
       const wow = before ? Math.round((best.p / before - 1) * 1000) / 10 : null;
       const lows = hist.weeks.map((w) => w.p[spec[0]]).filter((v) => v > 0);
       const bottom = lows.length >= 4 && best.p <= Math.min(...lows);
-      rows.push({ id: spec[0], n: spec[1], icon: spec[2], p: best.p, src: best.src, wow, bottom, name: best.name, url: best.url, shop: best.shop, n: best.n, med: best.med }); // name・url・shop・n（条件に合った件数）・med（基準の値段）は確かめ用（チラシには出さない）
+      rows.push({ id: spec[0], n: spec[1], icon: spec[2], p: best.p, src: best.src, wow, bottom, name: best.name, url: best.url, shop: best.shop, cnt: best.n, med: best.med }); // name・url・shop・cnt（条件に合った件数）・med（基準の値段）は確かめ用（チラシには出さない）
     }
     genres.push({ id: g.id, n: g.n, c: g.c, items: rows });
   }

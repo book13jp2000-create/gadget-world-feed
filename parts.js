@@ -124,7 +124,7 @@ function change30(hist, today) {
     items.push({
       id: part.id, n: part.n, j: part.j || part.n, // j：板に出す日本語の名前（型番はそのまま）
       p: last, // 今日の最安値（円）。取れなかった日は null（前の日の値を今日の値として出さない）
-      shop: cur ? cur.shop : '', pn: cur ? cur.pn || '' : '', url: cur ? cur.url || '' : '', n: cur ? cur.n : 0, med: cur ? cur.med : null, // 確かめ用（板には出さない）。n＝条件に合った件数、med＝基準の値段（中央値）
+      shop: cur ? cur.shop : '', pn: cur ? cur.pn || '' : '', url: cur ? cur.url || '' : '', cnt: cur ? cur.n : 0, med: cur ? cur.med : null, // 確かめ用（板には出さない）。cnt＝条件に合った件数、med＝基準の値段（中央値）
       d30: last ? change30(hist, today) : null, // 30日前と比べた変化％。履歴が7日分より短ければ null
       hist, // [日付, 最安値] の並び（古い順、最大31日）。取れなかった日は抜ける
     });
