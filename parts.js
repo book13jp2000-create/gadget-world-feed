@@ -31,11 +31,11 @@ const PARTS = [
   { id: '265k', n: 'Core Ultra 7 265K', q: 'Core Ultra 7 265K BOX', re: /265K(?![0-9A-Z])/i, not: /265KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 35000, max: 150000 },
   { id: '245k', n: 'Core Ultra 5 245K', q: 'Core Ultra 5 245K BOX', re: /245K(?![0-9A-Z])/i, not: /245KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   // メモリ（デスクトップ用の2枚組）・SSD（M.2 NVMe）
-  { id: 'ddr5', j: 'DDR5 メモリ 32GB（16GB×2）', n: 'DDR5 32GB (16GBx2)', q: 'DDR5 32GB 16GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)|(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 8000, max: 120000 },
-  { id: 'ddr5-64', j: 'DDR5 メモリ 64GB（32GB×2）', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 200000 },
-  { id: 'ssd1tb', j: 'NVMe SSD 1TB', n: 'NVMe SSD 1TB', q: 'NVMe SSD 1TB M.2 Gen4', re: /(?<![0-9])1\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])1\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 6000, max: 60000 },
-  { id: 'ssd2tb', j: 'NVMe SSD 2TB', n: 'NVMe SSD 2TB', q: 'NVMe SSD 2TB M.2 Gen4', re: /(?<![0-9])2\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])2\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ|ヒートシンクのみ/i, min: 10000, max: 120000 },
-  { id: 'ssd4tb', j: 'NVMe SSD 4TB', n: 'NVMe SSD 4TB', q: 'NVMe SSD 4TB M.2 Gen4', re: /(?<![0-9])4\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])4\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 20000, max: 200000 },
+  { id: 'ddr5', kit: '16GBx2', j: 'DDR5 メモリ 32GB（16GB×2）', n: 'DDR5 32GB (16GBx2)', q: 'DDR5 32GB 16GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)|(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 8000, max: 120000 },
+  { id: 'ddr5-64', kit: '32GBx2', j: 'DDR5 メモリ 64GB（32GB×2）', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 200000 },
+  { id: 'ssd1tb', cap: '1TB', j: 'NVMe SSD 1TB', n: 'NVMe SSD 1TB', q: 'NVMe SSD 1TB M.2 Gen4', re: /(?<![0-9])1\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])1\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 6000, max: 60000 },
+  { id: 'ssd2tb', cap: '2TB', j: 'NVMe SSD 2TB', n: 'NVMe SSD 2TB', q: 'NVMe SSD 2TB M.2 Gen4', re: /(?<![0-9])2\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])2\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ|ヒートシンクのみ/i, min: 10000, max: 120000 },
+  { id: 'ssd4tb', cap: '4TB', j: 'NVMe SSD 4TB', n: 'NVMe SSD 4TB', q: 'NVMe SSD 4TB M.2 Gen4', re: /(?<![0-9])4\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])4\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 20000, max: 200000 },
   // 電源・マザーボード・CPU クーラー・モニター
   { id: 'psu850', j: '電源 850W GOLD', n: 'PSU 850W Gold', q: '電源ユニット 850W 80PLUS GOLD ATX', re: /850\s*W[\s\S]*GOLD|GOLD[\s\S]*850\s*W/i, not: /PC本体|中古|ケース付|SFX/i, min: 8000, max: 60000 },
   { id: 'b850', j: 'B850 マザーボード', n: 'B850 Motherboard', q: 'B850 マザーボード AM5 ATX', re: /B850(?![0-9])/i, not: /PC本体|CPUセット|セット品|中古/i, min: 15000, max: 80000 },
@@ -63,24 +63,12 @@ async function getJson(u) {
   throw new Error('HTTP 429 が続いた');
 }
 
-// 安い順に最大3ページ（150件）見て、条件に合う最初の物
+// 11/13：ただの最安値をやめ、yahoo-pick.js の robustLowest（並行輸入・訳あり・容量違いの出品・はずれ値を外す）で選ぶ
+const { robustLowest } = require('./yahoo-pick.js');
 async function lowest(part) {
-  let seen = 0;
-  for (let page = 0; page < 3; page++) {
-    const u = new URL('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch');
-    u.search = new URLSearchParams({ appid: APPID, query: part.q, sort: '+price', in_stock: 'true', condition: 'new', results: '50', start: String(1 + page * 50), price_from: String(part.min), price_to: String(part.max) }).toString();
-    const j = await getJson(u);
-    const list = j.hits || [];
-    seen += list.length;
-    const h = list.find((x) => {
-      const name = String(x.name || '').normalize('NFKC');
-      return part.re.test(name) && !part.not.test(name) && x.price >= part.min && x.price <= part.max;
-    });
-    if (h) return { p: h.price, shop: (h.seller && h.seller.name) || '', pn: String(h.name || '').slice(0, 80), url: h.url || '' };
-    if (list.length < 50) break;
-    await sleep(1200);
-  }
-  throw new Error(`${part.id}: 条件に合う商品なし（${seen}件中）`);
+  const r = await robustLowest(APPID, part);
+  if (!r) throw new Error(`${part.id}: 条件に合う商品なし`);
+  return { p: r.p, shop: r.shop, pn: r.name.slice(0, 80), url: r.url, n: r.n, med: r.med };
 }
 
 function loadPrev() {
@@ -126,7 +114,7 @@ function change30(hist, today) {
       cur = { p: hist[hist.length - 1][1], shop: 'sample', count: 0 };
     } else {
       try { cur = await lowest(part); ok++; } catch (e) { console.error('失敗', e.message); }
-      await sleep(1200); // 1秒に1回まで
+      await sleep(1600); // 1秒に1回までの決まり（robustLowest の中でも間をあける）
       if (cur) { hist = hist.filter((x) => x[0] !== today); hist.push([today, cur.p]); }
       // 31日より前の記録は捨てる（30日前と比べるため 31日分残す）
       const keepFrom = jstDate(new Date(Date.now() - DAYS * 86400e3));

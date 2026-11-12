@@ -188,20 +188,18 @@ async function getJson(u) {
   throw new Error('HTTP 429 が続いた');
 }
 
-// Yahoo!ショッピング：安い順に最大2ページ（100件）見て、条件に合う最初の物
+// 11/13：ただの最安値をやめ、yahoo-pick.js の robustLowest（並行輸入・訳あり・容量違いの出品・はずれ値を外す）で選ぶ
+const { robustLowest, capOk, kitOk, BAD } = require('./yahoo-pick.js');
+// 容量・メモリの組を決める品目（名前にその容量だけがある物を選ぶ）
+const SPEC = {
+  ddr5: { kit: '16GBx2' }, 'ddr5-64': { kit: '32GBx2' }, ssd1tb: { cap: '1TB' }, ssd2tb: { cap: '2TB' }, ssdext: { cap: '1TB' }, sd256: { cap: '256GB' }, sd512: { cap: '512GB' },
+  iphone: { cap: '256GB' }, pixel: { cap: '128GB' }, pixel9a: { cap: '128GB' }, galaxy: { cap: '256GB' }, ipad: { cap: '128GB' }, ipadair: { cap: '128GB' }, macbook: { cap: '256GB' },
+  quest3: { cap: '512GB' }, quest3s: { cap: '128GB' },
+};
 async function yahoo(spec) {
-  const [, , , q, re, min, max] = spec;
-  for (let page = 0; page < 2; page++) {
-    const u = new URL('https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch');
-    u.search = new URLSearchParams({ appid: APPID, query: q, sort: '+price', in_stock: 'true', condition: 'new', results: '50', start: String(1 + page * 50), price_from: String(min), price_to: String(max) }).toString();
-    const j = await getJson(u);
-    const list = j.hits || [];
-    const h = list.find((x) => { const nm = String(x.name || '').normalize('NFKC'); return re.test(nm) && !NOT.test(nm) && x.price >= min && x.price <= max; });
-    if (h) return { p: h.price, src: 'Yahoo!', name: String(h.name || '').slice(0, 120), url: h.url || '', shop: (h.seller && h.seller.name) || '' };
-    if (list.length < 50) break;
-    await sleep(1100);
-  }
-  return null;
+  const [id, , , q, re, min, max] = spec;
+  const r = await robustLowest(APPID, { q, re, not: NOT, min, max, ...(SPEC[id] || {}) });
+  return r ? { p: r.p, src: 'Yahoo!', name: r.name, url: r.url, shop: r.shop, n: r.n, med: r.med } : null;
 }
 
 // 楽天市場（RAKUTEN_APP_ID があるときだけ。まだ試していない：ID が無いため）
@@ -210,7 +208,7 @@ async function rakuten(spec) {
   const u = new URL('https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601');
   u.search = new URLSearchParams({ applicationId: RAKUTEN, keyword: q, sort: '+itemPrice', availability: '1', minPrice: String(min), maxPrice: String(max), hits: '30', format: 'json' }).toString();
   const j = await getJson(u);
-  const h = (j.Items || []).map((x) => x.Item || x).find((x) => { const nm = String(x.itemName || '').normalize('NFKC'); return re.test(nm) && !NOT.test(nm); });
+  const h = (j.Items || []).map((x) => x.Item || x).find((x) => { const nm = String(x.itemName || '').normalize('NFKC'); const o = SPEC[spec[0]] || {}; return re.test(nm) && !NOT.test(nm) && !BAD.test(nm) && capOk(nm, o.cap) && kitOk(nm, o.kit); });
   return h ? { p: h.itemPrice, src: '楽天', name: String(h.itemName || '').slice(0, 120), url: h.itemUrl || '', shop: h.shopName || '' } : null;
 }
 
@@ -275,8 +273,8 @@ function placeholder() {
   return { hero: [], full: all, genres: all.map((g) => ({ ...g, items: g.items.slice(0, PER) })), hist: null, compared: null };
 }
 
-// 号の日付（直近の土曜。土曜以外に作り直しても号は変わらない）
-function issueDate() { const now = jstNow(); return new Date(now.getTime() - ((now.getUTCDay() + 1) % 7) * 86400e3); }
+// 号の日付：この週の土曜（土曜の朝に作る。土曜以外に作り直したときは次の土曜の号として出す）
+function issueDate() { const now = jstNow(); return new Date(now.getTime() + ((6 - now.getUTCDay() + 7) % 7) * 86400e3); }
 
 // gp を渡すと、そのジャンルだけの A4 のページ（目玉 GP_HERO 品＋ GP_LIST 品）
 const GP_HERO = 3, GP_LIST = 12;

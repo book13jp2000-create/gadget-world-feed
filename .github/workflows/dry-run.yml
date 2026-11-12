@@ -1,0 +1,18 @@
+# 価格の取り方を試すだけ（data ブランチにも Pages にも出さない）。結果の表を記録に出す
+name: dry-run
+on:
+  workflow_dispatch:
+jobs:
+  dry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: PCパーツを試す
+        env:
+          YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
+        run: |
+          node parts.js dry
+          node -e "const j=require('./dry/parts.json');for(const i of j.items)console.log([i.j||i.n,i.p,i.shop,(i.pn||'').slice(0,70)].join(' | '))"
