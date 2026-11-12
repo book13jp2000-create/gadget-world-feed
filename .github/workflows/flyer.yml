@@ -1,4 +1,4 @@
-# 週刊チラシ（flyer.png）を毎週土曜の朝に作り、data ブランチに置く（履歴 flyer-history.json も data ブランチ）。終わったら feed（Pages）を動かす
+# 週刊チラシ（表紙 flyer.png とジャンルごとの A4 flyer-<ジャンル>.png）を毎週土曜の朝に作り、data ブランチに置く（履歴 flyer-history.json も data ブランチ）。終わったら feed（Pages）を動かす
 # YAHOO_APPID（Secrets）が無いうちは「準備中」のチラシ（価格なし）。RAKUTEN_APP_ID があれば楽天市場の価格も見る
 name: flyer
 on:
@@ -40,7 +40,7 @@ jobs:
           cd data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add flyer.png flyer.json
+          git add flyer.png flyer-*.png flyer.json # 表紙とジャンルごとの A4（11/12）
           [ -f flyer-history.json ] && git add flyer-history.json
           git commit -m "flyer $(date -u +%F)" || exit 0
           git push origin HEAD:data

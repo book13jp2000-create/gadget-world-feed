@@ -38,6 +38,7 @@ jobs:
         run: |
           if git fetch --depth=1 origin data 2>/dev/null; then
             git show FETCH_HEAD:flyer.png > site/flyer.png 2>/dev/null || rm -f site/flyer.png
+            for g in pc sp pcs audio camera game home kitchen; do git show FETCH_HEAD:flyer-$g.png > site/flyer-$g.png 2>/dev/null || rm -f site/flyer-$g.png; done
             git show FETCH_HEAD:flyer.json > site/flyer.json 2>/dev/null || rm -f site/flyer.json
           fi
       - run: cp index.html site/ 2>/dev/null || true
