@@ -8,14 +8,15 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 転売・状態の悪い物・並行輸入など（名前にあれば外す）
-const BAD = /並行輸入|輸入品|訳あり|わけあり|中古|ジャンク|代引き?不可|即納|アウトレット|開封品|展示品|B級|再生品|リファービッシュ|整備済|互換|未使用品|保証なし|海外版|国内未発売|プレミア|転売|メーカー保証無/;
-const STORAGE = [128, 256, 500, 512, 1000, 2000, 4000, 8000]; // GB（1TB＝1000）
+// （「即納」「正規輸入品」「プレミアム」「互換性」はふつうの店の正規品にも付くので外さない。Codex の指摘）
+const BAD = /並行輸入|訳あり|訳有|わけあり|中古|ジャンク|代引き?不可|アウトレット|開封品|展示品|箱(傷|潰れ|つぶれ|ダメージ)|B級|再生品|リファービッシュ|整備済|互換品|未使用品|保証なし|海外版|国内未発売|転売|メーカー保証無/;
 
 function capsIn(name) {
   const out = new Set();
-  for (const m of name.matchAll(/(\d+(?:\.\d+)?)\s*(GB|TB)(?![a-z\/])/gi)) {
-    const v = parseFloat(m[1]) * (m[2].toUpperCase() === 'TB' ? 1000 : 1);
-    if (STORAGE.includes(Math.round(v))) out.add(Math.round(v));
+  // 64GB 以上を記憶装置の容量とみなす（スマホの「12GB RAM」やメモリの「16GB」は数えない）。「256GB/512GB」の区切りも数える
+  for (const m of name.matchAll(/(\d+(?:\.\d+)?)\s*(GB|TB)(?![a-z])/gi)) {
+    const v = Math.round(parseFloat(m[1]) * (m[2].toUpperCase() === 'TB' ? 1000 : 1));
+    if (v >= 64) out.add(v);
   }
   return out;
 }
@@ -35,13 +36,21 @@ function kitOk(name, kit) {
   const kits = [...name.matchAll(/(\d+)\s*GB\s*(?:[x×*＊]\s*(\d)|(\d)\s*枚)/gi)].map((m) => `${m[1]}x${m[2] || m[3]}`);
   const rev = [...name.matchAll(/(\d)\s*[x×*＊]\s*(\d+)\s*GB/gi)].map((m) => `${m[2]}x${m[1]}`);
   const all = new Set(kits.concat(rev));
-  return all.has(`${size}x${n}`) && [...all].every((k) => k === `${size}x${n}`);
+  if (!(all.has(`${size}x${n}`) && [...all].every((k) => k === `${size}x${n}`))) return false;
+  // 合計の容量：16GB×2 なら 32GB 以外の大きな容量（64GB など）が名前にあれば別の品（Codex の指摘）
+  const total = Number(size) * Number(n);
+  const others = [...name.matchAll(/(\d+)\s*GB(?![a-z])/gi)].map((m) => Number(m[1])).filter((v) => v > Number(size) && v !== total);
+  return others.length === 0;
 }
 
+// API の決まり：アプリケーション ID ごとに 30 回/分まで → この中のすべての呼び出しを 2.1 秒以上あける
+let lastCall = 0;
+async function throttle() { const w = lastCall + 2100 - Date.now(); if (w > 0) await sleep(w); lastCall = Date.now(); }
 async function getJson(u) {
   for (let t = 0; t < 4; t++) {
+    await throttle();
     const res = await fetch(u, { signal: AbortSignal.timeout(15000) });
-    if (res.status === 429) { await sleep(8000 * (t + 1)); continue; } // 混んでいるときは長めに待って取り直す
+    if (res.status === 429) { const ra = Number(res.headers.get('retry-after')); await sleep((Number.isFinite(ra) && ra > 0 ? ra * 1000 : 0) + 15000 * (t + 1)); continue; } // 混んでいるときは長めに待って取り直す
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
@@ -64,19 +73,21 @@ function fits(h, spec) {
 const median = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 // 返す物：{ p, name, url, shop, n（条件に合った件数）, med（中央値） }。合う物が無ければ null
-async function robustLowest(appid, spec, gap = 1600) {
-  const byScore = await search(appid, spec, '-score', 1); await sleep(gap);
-  const cheap1 = await search(appid, spec, '+price', 1); await sleep(gap);
-  let cheap = cheap1;
-  if (cheap1.length === 50) { cheap = cheap.concat(await search(appid, spec, '+price', 51)); await sleep(gap); }
+async function robustLowest(appid, spec) {
+  const byScore = await search(appid, spec, '-score', 1);
+  const cheap = await search(appid, spec, '+price', 1);
   const seen = new Set(); const all = [];
   for (const h of byScore.concat(cheap)) { const k = h.code || h.url || h.name; if (seen.has(k)) continue; seen.add(k); if (fits(h, spec)) all.push(h); }
   if (all.length === 0) return null;
+  // 基準の値段：おすすめ順（-score）の上位で条件に合う物の中央値。3件に満たないときは全部の中央値（それも3件に満たなければ載せない）
   const ref = byScore.filter((h) => fits(h, spec)).map((h) => Number(h.price));
-  const med = median(ref.length >= 3 ? ref : all.map((h) => Number(h.price)));
+  const base = ref.length >= 3 ? ref : all.length >= 3 ? all.map((h) => Number(h.price)) : null;
+  if (!base) return null;
+  const med = median(base);
   const band = all.filter((h) => Number(h.price) >= med * 0.6 && Number(h.price) <= med * 1.8);
-  const pick = (band.length ? band : all).sort((a, b) => Number(a.price) - Number(b.price))[0];
+  if (!band.length) return null;
+  const pick = band.sort((a, b) => Number(a.price) - Number(b.price))[0];
   return { p: Number(pick.price), name: String(pick.name || '').slice(0, 120), url: pick.url || '', shop: (pick.seller && pick.seller.name) || '', n: all.length, med: Math.round(med) };
 }
 
-module.exports = { robustLowest, capOk, kitOk, BAD };
+module.exports = { robustLowest, capOk, kitOk, BAD, throttle };

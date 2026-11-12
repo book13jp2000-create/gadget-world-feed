@@ -32,7 +32,7 @@ const PARTS = [
   { id: '245k', n: 'Core Ultra 5 245K', q: 'Core Ultra 5 245K BOX', re: /245K(?![0-9A-Z])/i, not: /245KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   // メモリ（デスクトップ用の2枚組）・SSD（M.2 NVMe）
   { id: 'ddr5', kit: '16GBx2', j: 'DDR5 メモリ 32GB（16GB×2）', n: 'DDR5 32GB (16GBx2)', q: 'DDR5 32GB 16GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)|(16GB\s*[x×*]\s*2|16GB\s*2枚|2\s*[x×]\s*16GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 8000, max: 120000 },
-  { id: 'ddr5-64', kit: '32GBx2', j: 'DDR5 メモリ 64GB（32GB×2）', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 200000 },
+  { id: 'ddr5-64', kit: '32GBx2', j: 'DDR5 メモリ 64GB（32GB×2）', n: 'DDR5 64GB (32GBx2)', q: 'DDR5 64GB 32GB 2枚組 デスクトップ', re: /DDR5[\s\S]*(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)|(32GB\s*[x×*]\s*2|32GB\s*2枚|2\s*[x×]\s*32GB)[\s\S]*DDR5/i, not: /ノート|SO-?DIMM|PC本体|ECC|サーバー/i, min: 15000, max: 400000 },
   { id: 'ssd1tb', cap: '1TB', j: 'NVMe SSD 1TB', n: 'NVMe SSD 1TB', q: 'NVMe SSD 1TB M.2 Gen4', re: /(?<![0-9])1\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])1\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 6000, max: 60000 },
   { id: 'ssd2tb', cap: '2TB', j: 'NVMe SSD 2TB', n: 'NVMe SSD 2TB', q: 'NVMe SSD 2TB M.2 Gen4', re: /(?<![0-9])2\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])2\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ|ヒートシンクのみ/i, min: 10000, max: 120000 },
   { id: 'ssd4tb', cap: '4TB', j: 'NVMe SSD 4TB', n: 'NVMe SSD 4TB', q: 'NVMe SSD 4TB M.2 Gen4', re: /(?<![0-9])4\s*TB[\s\S]*(NVMe|M\.2)|(NVMe|M\.2)[\s\S]*(?<![0-9])4\s*TB/i, not: /外付け|ポータブル|PC本体|ケース|SATA|USB|エンクロージャ/i, min: 20000, max: 200000 },
@@ -114,7 +114,7 @@ function change30(hist, today) {
       cur = { p: hist[hist.length - 1][1], shop: 'sample', count: 0 };
     } else {
       try { cur = await lowest(part); ok++; } catch (e) { console.error('失敗', e.message); }
-      await sleep(1600); // 1秒に1回までの決まり（robustLowest の中でも間をあける）
+      // 間は yahoo-pick.js の throttle があける（ID ごとに 30 回/分まで）
       if (cur) { hist = hist.filter((x) => x[0] !== today); hist.push([today, cur.p]); }
       // 31日より前の記録は捨てる（30日前と比べるため 31日分残す）
       const keepFrom = jstDate(new Date(Date.now() - DAYS * 86400e3));
@@ -124,7 +124,7 @@ function change30(hist, today) {
     items.push({
       id: part.id, n: part.n, j: part.j || part.n, // j：板に出す日本語の名前（型番はそのまま）
       p: last, // 今日の最安値（円）。取れなかった日は null（前の日の値を今日の値として出さない）
-      shop: cur ? cur.shop : '', pn: cur ? cur.pn || '' : '', url: cur ? cur.url || '' : '', // 確かめ用（板には出さない）
+      shop: cur ? cur.shop : '', pn: cur ? cur.pn || '' : '', url: cur ? cur.url || '' : '', n: cur ? cur.n : 0, med: cur ? cur.med : null, // 確かめ用（板には出さない）。n＝条件に合った件数、med＝基準の値段（中央値）
       d30: last ? change30(hist, today) : null, // 30日前と比べた変化％。履歴が7日分より短ければ null
       hist, // [日付, 最安値] の並び（古い順、最大31日）。取れなかった日は抜ける
     });

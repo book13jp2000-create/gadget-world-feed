@@ -24,7 +24,7 @@ const MIN_PER = 5;  // これより取れないジャンルがある週は書き
 const MIN_GP = 8;   // ジャンルのページに要る品数
 const HERO = 3;     // 目玉の帯の品数
 
-const NOT = /中古|ジャンク|訳あり|修理|部品|交換用|互換|ケース|カバー|フィルム|保護|ストラップ|スタンド単体|レンタル|シール|ステッカー|説明書|空箱|整備済|リファービッシュ|アクセサリ|対応(?!.*本体)/;
+const NOT = /修理|部品|交換用|互換品|ケース|カバー|フィルム|保護|ストラップ|スタンド単体|レンタル|シール|ステッカー|説明書|空箱|アクセサリ/; // 付属品を外す（状態の悪い物は yahoo-pick.js の BAD で外す）
 // ジャンル：名前・色・候補の品目（id、出す名前、絵、検索語、名前に必ず含む語（正規表現）、価格の下限・上限）
 const GENRES = [
   { id: 'pc', n: 'PCパーツ', c: '#e60012', items: [
@@ -232,9 +232,9 @@ async function collect() {
     for (const spec of g.items) {
       let best = null;
       try { best = await yahoo(spec); } catch (e) { console.error('Yahoo 失敗', spec[0], e.message); }
-      await sleep(1600); // 1秒に1回までの決まり。11/13 の初回で 429 が出たので間を広げた
+      // 間は yahoo-pick.js の throttle があける（ID ごとに 30 回/分まで）
       if (RAKUTEN) {
-        try { const r = await rakuten(spec); if (r && (!best || r.p < best.p)) best = r; } catch (e) { console.error('楽天 失敗', spec[0], e.message); }
+        try { const r = await rakuten(spec); const okBand = !best || !best.med || (r && r.p >= best.med * 0.6 && r.p <= best.med * 1.8); if (r && okBand && (!best || r.p < best.p)) best = r; } catch (e) { console.error('楽天 失敗', spec[0], e.message); } // 楽天も Yahoo の基準の値段の帯の中だけ
         await sleep(1100);
       }
       if (!best) continue;
@@ -243,7 +243,7 @@ async function collect() {
       const wow = before ? Math.round((best.p / before - 1) * 1000) / 10 : null;
       const lows = hist.weeks.map((w) => w.p[spec[0]]).filter((v) => v > 0);
       const bottom = lows.length >= 4 && best.p <= Math.min(...lows);
-      rows.push({ id: spec[0], n: spec[1], icon: spec[2], p: best.p, src: best.src, wow, bottom, name: best.name, url: best.url, shop: best.shop }); // name・url・shop は確かめ用（チラシには出さない）
+      rows.push({ id: spec[0], n: spec[1], icon: spec[2], p: best.p, src: best.src, wow, bottom, name: best.name, url: best.url, shop: best.shop, n: best.n, med: best.med }); // name・url・shop・n（条件に合った件数）・med（基準の値段）は確かめ用（チラシには出さない）
     }
     genres.push({ id: g.id, n: g.n, c: g.c, items: rows });
   }
