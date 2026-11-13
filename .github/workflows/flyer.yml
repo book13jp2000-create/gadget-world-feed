@@ -1,5 +1,5 @@
 # 週刊チラシ（表紙 flyer.png とジャンルごとの A4 flyer-<ジャンル>.png）を毎週土曜の朝に作り、data ブランチに置く（履歴 flyer-history.json も data ブランチ）。終わったら feed（Pages）を動かす
-# YAHOO_APPID（Secrets）が無いうちは「準備中」のチラシ（価格なし）。RAKUTEN_APP_ID があれば楽天市場の価格も見る
+# 11/13 から売れ筋モード（rank.js：16店の高評価トレンドランキング・商品画像）。YAHOO_APPID（Secrets）が無いうちは「準備中」のチラシ（価格なし）。RAKUTEN_APP_ID があれば楽天市場の価格も見る
 name: flyer
 on:
   schedule:
@@ -33,6 +33,7 @@ jobs:
           YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
           RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
           PREV_FILE: data/flyer-history.json
+          FLYER_MODE: ranking # 11/13 本人「公開してOK」：品目は Yahoo! の売れ筋（rank.js）。商品画像を外すときは FLYER_PHOTOS: '0'
           CHROME: google-chrome
         run: node flyer.js data
       - name: data ブランチに保存

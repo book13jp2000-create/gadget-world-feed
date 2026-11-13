@@ -172,6 +172,14 @@ const outDir = args.filter((a) => !a.startsWith('--'))[0] || path.join(__dirname
 const APPID = process.env.YAHOO_APPID;
 const RAKUTEN = process.env.RAKUTEN_APP_ID;
 const PREV_FILE = process.env.PREV_FILE || '';
+// 11/13 本人「売れ筋から自動で選びたい」→ FLYER_MODE=ranking で、品目を Yahoo! の高評価トレンドランキングから選ぶ（rank.js）。
+// 無指定は今までどおり（下の GENRES の候補の最安値）。SELLER_IDS（カンマ区切り）で店をしぼれる（本人が店を決めるまで使わない）。RANK_FILE は手元の確かめ用
+const MODE = process.env.FLYER_MODE || 'list';
+const SELLERS = (process.env.SELLER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+const RANK_FILE = process.env.RANK_FILE || '';
+// 11/13 本人（判断カード）「チラシには実際の画像を使いたい」→ 売れ筋モードでは、Yahoo! の返事にある商品画像を小さく、手を加えずに（大きさを変えるだけ・切り抜かない）出す。
+// 規約は許すとも禁じるとも書いていないので、店や Yahoo! から言われたらすぐやめる：USE_PHOTOS を false にする（または FLYER_PHOTOS=0）と全部を絵に戻す
+const USE_PHOTOS = MODE === 'ranking' && process.env.FLYER_PHOTOS !== '0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const jstNow = () => new Date(Date.now() + 9 * 3600e3);
 const ymd = (d) => d.toISOString().slice(0, 10);
@@ -227,7 +235,21 @@ async function collect() {
   const base = [...hist.weeks].reverse().find((w) => daysAgo(w.date) >= 5 && daysAgo(w.date) <= 9);
   const prices = {};
   const genres = [];
-  for (const g of GENRES) {
+  if (MODE === 'ranking') {
+    const { rankGenres } = require('./rank.js');
+    const rg = await rankGenres(GENRES, { appid: APPID, n: 15, not: NOT, ...(SELLERS.length ? { sellers: SELLERS } : {}), file: RANK_FILE });
+    for (const g of rg) {
+      for (const it of g.items) {
+        prices[it.id] = it.p;
+        const before = base && base.p[it.id];
+        it.wow = before ? Math.round((it.p / before - 1) * 1000) / 10 : null;
+        const lows = hist.weeks.map((w) => w.p[it.id]).filter((v) => v > 0);
+        it.bottom = lows.length >= 4 && it.p <= Math.min(...lows);
+      }
+      genres.push(g);
+    }
+  }
+  for (const g of MODE === 'ranking' ? [] : GENRES) {
     const rows = [];
     for (const spec of g.items) {
       let best = null;
@@ -248,16 +270,21 @@ async function collect() {
     genres.push({ id: g.id, n: g.n, c: g.c, items: rows });
   }
   hist.weeks = hist.weeks.filter((w) => w.date !== today).concat([{ date: today, p: prices }]).slice(-12);
-  return { ...pick(genres), hist, compared: base ? base.date : null };
+  return { ...pick(genres, !!base), hist, compared: base ? base.date : null };
 }
 
 // 先週より下がった割合の大きい順（比べる記録が無い品目は後ろ）。全体の上位 HERO 品を目玉の帯へ（ジャンルの欄からは外す）、各ジャンル PER 品
-const byDrop = (a, b) => (a.wow == null) - (b.wow == null) || (a.wow ?? 0) - (b.wow ?? 0);
-function pick(genres) {
+const byDrop = (a, b) => MODE === 'ranking' ? a.rank - b.rank : (a.wow == null) - (b.wow == null) || (a.wow ?? 0) - (b.wow ?? 0); // 売れ筋で選ぶときは順位の順
+function pick(genres, hasBase) {
   const all = genres.flatMap((g) => g.items.map((it) => ({ ...it, g: g.n, c: g.c }))).filter((it) => it.wow != null && it.wow < 0).sort(byDrop);
   const hero = []; const used = new Set();
   const roomy = new Set(genres.filter((g) => g.items.length > MIN_PER).map((g) => g.n)); // 目玉に1品出しても MIN_PER 品残るジャンルだけ
   for (const it of all) { if (hero.length >= HERO) break; if (!roomy.has(it.g) || hero.some((h) => h.g === it.g)) continue; hero.push(it); used.add(it.id); } // 同じジャンルからは1品
+  // 売れ筋モードで前号と比べられない週：目玉の帯は「売れ筋 1〜3 位」（いくつもの店で上位の品＝点の高い順。同じジャンルからは1品）
+  if (MODE === 'ranking' && !hasBase) {
+    const top = genres.flatMap((g) => g.items.map((it) => ({ ...it, g: g.n, c: g.c }))).sort((a, b) => (b.score || 0) - (a.score || 0));
+    for (const it of top) { if (hero.length >= HERO) break; if (!roomy.has(it.g) || hero.some((h) => h.g === it.g)) continue; hero.push({ ...it, top: hero.length + 1 }); used.add(it.id); }
+  }
   return { hero, full: genres.map((g) => ({ ...g, items: [...g.items].sort(byDrop) })), genres: genres.map((g) => ({ ...g, items: g.items.filter((it) => !used.has(it.id)).sort(byDrop).slice(0, PER) })) };
 }
 
@@ -278,29 +305,32 @@ function issueDate() { const now = jstNow(); return new Date(now.getTime() + ((6
 
 // gp を渡すと、そのジャンルだけの A4 のページ（目玉 GP_HERO 品＋ GP_LIST 品）
 const GP_HERO = 3, GP_LIST = 12;
+// ジャンルのページの目玉：前号と比べられる週は値下がりの大きい順、売れ筋モードで前号が無い週は売れ筋 1〜3 位（JSON の pages[].hero も同じ物）
+const gpHero = (its, compared) => MODE === 'ranking' && !compared ? its.slice(0, GP_HERO).map((it, i) => ({ ...it, top: i + 1 })) : its.filter((it) => it.wow != null && it.wow < 0).slice(0, GP_HERO);
 function html(data, ready, gp) {
   const now = jstNow();
   const d = issueDate(); // 号の日付：直近の土曜（土曜の朝に作る）
   const wd = '日月火水木金土'[d.getUTCDay()];
   const L = LAYOUT;
-  if (gp) { const its = gp.items; const hero = ready ? its.filter((it) => it.wow != null && it.wow < 0).slice(0, GP_HERO).map((it) => ({ ...it, g: gp.n, c: gp.c })) : []; const hid = new Set(hero.map((h) => h.id)); data = { ...data, hero, genres: [{ ...gp, items: its.filter((it) => !hid.has(it.id)).slice(0, GP_LIST) }] }; }
+  if (gp) { const its = gp.items; const hero = ready ? gpHero(its, data.compared).map((it) => ({ ...it, g: gp.n, c: gp.c })) : []; const hid = new Set(hero.map((h) => h.id)); data = { ...data, hero, genres: [{ ...gp, items: its.filter((it) => !hid.has(it.id)).slice(0, GP_LIST) }] }; }
   const all = data.hero.concat(data.genres.flatMap((g) => g.items));
   const drops = all.map((it) => it.wow).filter((v) => v != null && v < 0);
   const maxDrop = drops.length ? Math.min(...drops) : null;
   const count = all.length;
-  const icon = (k) => ICONS[k] || ICONS.gpu;
-  const src = (it) => (RAKUTEN && it.src ? `<span class="src">${esc(it.src)}調べ</span>` : '');
-  const chg = (it) => it.wow == null ? '<span class="ch new">前号の価格なし</span>' : `<span class="ch${it.wow > 0 ? ' up' : ''}">前号比 ${it.wow > 0 ? '▲' : it.wow < 0 ? '▼' : '±'}${Math.abs(it.wow).toFixed(1)}%</span>`;
+  const icon = (it) => USE_PHOTOS && it.img ? `<img class="ph" src="${esc(it.img)}" alt="">` : ICONS[it.icon] || ICONS.gpu; // 写真が無い品は絵
+  // 売れ筋モード：品の下に店の名前（表紙は行が詰まって次の品名に重なるので出さず、ジャンルのページだけ）。いつものモード：楽天があるときだけ出典
+  const src = (it) => MODE === 'ranking' ? (gp && it.shop ? `<span class="src shop">${esc(it.shop)}</span>` : '') : RAKUTEN && it.src ? `<span class="src">${esc(it.src)}調べ</span>` : '';
+  const chg = (it) => it.wow == null && MODE === 'ranking' && it.rank ? `<span class="ch new">売れ筋 ${it.rank}位</span>` : it.wow == null ? '<span class="ch new">前号の価格なし</span>' : `<span class="ch${it.wow > 0 ? ' up' : ''}">前号比 ${it.wow > 0 ? '▲' : it.wow < 0 ? '▼' : '±'}${Math.abs(it.wow).toFixed(1)}%</span>`;
   const price = (it, cls) => ready ? `<div class="pr ${cls || ''}${yen(it.p).length >= 7 ? ' long' : ''}"><span class="yen">¥</span>${yen(it.p)}<small>〜<br><i>税込</i></small></div>` : `<div class="pr wait ${cls || ''}">¥ ― ―</div>`;
   // シールは決まった言葉だけ（品目の条件で数量を約束しているわけではないので「数量限定」などは飾りの帯にだけ使う）
   const sticker = (it) => !ready ? '' : it.bottom ? '<span class="st st-b">最安更新</span>' : it.wow != null && it.wow <= -5 ? '<span class="st">値下がり</span>' : it.wow != null && it.wow >= 3 ? '<span class="st st-u">値上がり</span>' : '';
-  const heroCard = (it, i) => `<div class="hc" style="--gc:${it.c}"><div class="hg">${esc(it.g)}</div><div class="hpic">${icon(it.icon)}</div><div class="htx"><div class="hn">${esc(it.n)}</div>${price(it, 'big')}<div class="hbelow">${chg(it)}${src(it)}</div></div><div class="burst hb"><b>前号比</b><span>▼${Math.abs(it.wow) < 1 ? Math.abs(it.wow).toFixed(1) : Math.abs(it.wow).toFixed(0)}<small>%</small></span></div><div class="limit">${['今週いちばんの値下がり', '集会の話のネタにどうぞ', '気になったら島で語ろう'][i] || ''}</div></div>`;
+  const heroCard = (it, i) => `<div class="hc" style="--gc:${it.c}"><div class="hg">${esc(it.g)}</div><div class="hpic">${icon(it)}</div><div class="htx"><div class="hn">${esc(it.n)}</div>${price(it, 'big')}<div class="hbelow">${it.top ? `<span class="ch new">${gp ? '' : esc(it.g) + 'で'}売れ筋 ${it.rank}位</span>` : chg(it)}${src(it)}</div></div>${it.top ? `<div class="burst hb"><b>売れ筋</b><span>${it.top}<small>位</small></span></div><div class="limit">${['今週いちばんの売れ筋', '集会の話のネタにどうぞ', '気になったら島で語ろう'][i] || ''}</div>` : `<div class="burst hb"><b>前号比</b><span>▼${Math.abs(it.wow) < 1 ? Math.abs(it.wow).toFixed(1) : Math.abs(it.wow).toFixed(0)}<small>%</small></span></div><div class="limit">${['今週いちばんの値下がり', '集会の話のネタにどうぞ', '気になったら島で語ろう'][i] || ''}</div>`}</div>`;
   const heroEmpty = ready ? `<div class="hc empty"><div class="hn">${data.compared ? '今週は前号より下がった品がありませんでした' : '前号の価格がまだ無いので、目玉は次の号から'}</div></div>` : '<div class="hc empty wait"><div class="wb">準備中</div><div class="ws">価格の取得の設定が済みしだい<br>毎週土曜に更新します</div></div>';
-  const item = (it, i) => `<div class="it${i === 0 ? ' top' : ''}${ready && (i === 0 || sticker(it)) ? ' stk' : ''}"><div class="pic">${icon(it.icon)}</div><div class="tx"><div class="nm">${esc(it.n)}</div>${price(it)}${ready ? chg(it) : '<span class="ch wait">価格は準備中</span>'}${src(it)}</div>${i === 0 && ready ? '<span class="st st-top">目玉</span>' : sticker(it)}</div>`;
-  const tileNote = ready ? '検索時点の税込価格・送料別／前号比は同じ検索条件の最安どうし' : '価格は準備中です';
-  const tiles = data.genres.map((g, gi) => `<div class="g" style="--gc:${g.c}"><h2>${gi + 1}. ${esc(g.n)}<span class="h2s">${DEMO ? '<b class="gm">見本・架空価格</b>' : ready ? '値下がり順' : ''}</span></h2>${g.items.map(item).join('')}${g.items.length < PER ? `<div class="it miss">${g.items.length === 0 ? '今週は価格を取れませんでした' : 'ほかの品目は今週は取れませんでした'}</div>` : ''}<div class="gn">${tileNote}</div></div>`).join('');
+  const item = (it, i) => `<div class="it${i === 0 ? ' top' : ''}${ready && (i === 0 || sticker(it)) ? ' stk' : ''}"><div class="pic">${icon(it)}</div><div class="tx"><div class="nm">${esc(it.n)}</div>${price(it)}${ready ? chg(it) : '<span class="ch wait">価格は準備中</span>'}${src(it)}</div>${i === 0 && ready ? '<span class="st st-top">目玉</span>' : sticker(it)}</div>`;
+  const tileNote = ready ? (MODE === 'ranking' ? 'Yahoo!ショッピングの売れ筋（注文数と評価）の上位・その店の税込価格' : '検索時点の税込価格・送料別／前号比は同じ検索条件の最安どうし') : '価格は準備中です';
+  const tiles = data.genres.map((g, gi) => `<div class="g" style="--gc:${g.c}"><h2${g.n.length > 7 ? ' class="long"' : ''}><span>${gi + 1}. ${esc(g.n)}</span><span class="h2s">${DEMO ? '<b class="gm">見本・架空価格</b>' : ready ? (MODE === 'ranking' ? '売れ筋順' : '値下がり順') : ''}</span></h2>${g.items.map(item).join('')}${g.items.length < PER ? `<div class="it miss">${g.items.length === 0 ? '今週は価格を取れませんでした' : 'ほかの品目は今週は取れませんでした'}</div>` : ''}<div class="gn">${tileNote}</div></div>`).join('');
   const heroes = ready && data.hero.length ? data.hero.map(heroCard).join('') : heroEmpty;
-  const credit = 'Web Services by Yahoo! JAPAN' + (RAKUTEN ? ' ／ Supported by Rakuten Developers' : '');
+  const credit = 'Web Services by Yahoo! JAPAN<br>（https://developer.yahoo.co.jp/sitemap/）' + (RAKUTEN ? ' ／ Supported by Rakuten Developers' : '');
   return `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans CJK JP","Noto Sans JP","IPAGothic",sans-serif;color:#111;overflow:hidden;position:relative;
@@ -324,9 +354,9 @@ body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothi
 .hc.empty{display:flex;align-items:center;justify-content:center}.hc.empty .hn{font-size:34px;color:#777;padding:0}
 .hc.wait{gap:30px;border-color:#e60012}.hc.wait .wb{font-size:120px;font-weight:900;color:#e60012;transform:rotate(-4deg)}.hc.wait .ws{font-size:30px;font-weight:900;line-height:1.4}
 .hc .hg{position:absolute;left:0;top:0;background:var(--gc);color:#fff;font-size:20px;font-weight:900;padding:1px 10px}
-.hpic{width:96px;height:96px;flex:none}.hpic svg,.pic svg{width:100%;height:100%;display:block}
+.hpic{width:96px;height:96px;flex:none}.hpic svg,.pic svg{width:100%;height:100%;display:block}.ph{width:100%;height:100%;object-fit:contain;display:block;background:#fff}.src.shop{display:block;font-size:13px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .htx{min-width:0;flex:1}
-.hn{padding-right:88px;font-size:22px;font-weight:900;line-height:1.12;max-height:3.5em;overflow:hidden}
+.hn{padding-right:88px;font-size:22px;font-weight:900;line-height:1.12;max-height:2.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .hbelow{margin-top:2px}
 .hb{position:absolute;right:4px;top:4px;width:100px;height:100px;background:#e60012;color:#fff200;transform:rotate(-12deg)}.hb b{font-size:15px}.hb span{font-size:34px;line-height:1}.hb small{font-size:16px}
 .limit{position:absolute;left:0;right:0;bottom:0;z-index:3;background:#111;color:#fff;font-size:17px;font-weight:800;padding:1px 10px;text-align:left}
@@ -341,7 +371,7 @@ body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothi
 .grid{position:absolute;left:${L.pad}px;right:${L.pad}px;top:${L.head + L.pad}px;bottom:${L.foot + L.pad}px;display:grid;grid-template-columns:repeat(${L.cols},1fr);grid-template-rows:repeat(${L.rows},1fr);gap:${L.gap}px}
 .g{background:#fff;border:5px solid var(--gc);display:flex;flex-direction:column;overflow:hidden;min-height:0;box-shadow:4px 4px 0 #111}
 .g h2{font-size:27px;font-weight:900;white-space:nowrap;color:#fff;padding:2px 10px;letter-spacing:1px;background:var(--gc);display:flex;justify-content:space-between;align-items:center}
-.g h2 .h2s{font-size:14px;flex:none;background:#fff200;color:#111;padding:0 6px;transform:rotate(-4deg)}
+.g h2{gap:6px}.g h2.long{font-size:23px;letter-spacing:0}.g h2 .h2s{font-size:14px;flex:none;background:#fff200;color:#111;padding:0 6px;transform:rotate(-4deg)}
 .it{display:flex;align-items:center;gap:8px;padding:3px 8px;border-top:3px dashed #c8c8c8;flex:1;position:relative;min-height:0;overflow:hidden}
 .it .pic{width:72px;height:72px;flex:none;background:#fff;border-radius:8px}
 .it .tx{min-width:0;flex:1}
@@ -372,7 +402,7 @@ body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothi
 .it.miss{justify-content:center;color:#777;font-size:20px;font-weight:800;flex:.5}
 /* 下の帯 */
 .foot{position:absolute;bottom:0;left:0;right:0;height:${L.foot}px;background:#111;color:#fff;font-size:20px;padding:6px 24px;display:flex;justify-content:space-between;align-items:center;gap:20px}
-.foot .fl{line-height:1.35}.foot .fl b{color:#fff200}
+.foot .fl{line-height:1.35;max-width:520px}.foot>div:last-child{text-align:right;line-height:1.3}.foot .fl b{color:#fff200}
 .foot .tape{position:absolute;left:560px;top:8px;background:#fff200;color:#111;font-weight:900;font-size:20px;padding:2px 22px;transform:rotate(-2deg);border:3px solid #111}
 .mihon.m2{top:520px;font-size:200px;letter-spacing:20px}
 .mtape{position:absolute;left:0;right:0;top:0;background:#e60012;color:#fff;font-size:34px;font-weight:900;text-align:center;z-index:9;padding:4px}
@@ -387,7 +417,7 @@ body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothi
 ${DEMO ? '<div class="coupon mbig"><b>見本</b><span>価格は作り物</span></div>' : ''}<div class="coupon${DEMO ? ' hide' : ''}"><div class="ct">✂ おふざけ券（割引なし）</div><div class="cn">100<small>%</small></div><div class="cs">集会に来ると<br>楽しさ <b>100%</b> 増量</div><div class="cj">ガジェ愛の冗談の券。お店では使えません</div></div></div>
 ${gp ? `<div class="gpl" style="--gc:${gp.c};grid-template-rows:repeat(${Math.max(4, Math.ceil(data.genres[0].items.length / 2))},1fr) 30px">${data.genres[0].items.map((it, i) => item(it, i + 1)).join('')}${DEMO ? '<b class="gpm">見本・架空価格</b>' : ''}<div class="gpn">${tileNote}</div></div>` : `<div class="grid">${tiles}</div>`}
 ${ready ? (DEMO ? '<div class="mtape">見本：価格は作り物です（並びの確認用）。公開しません</div>' : '') : ''}
-<div class="foot"><div class="tape">${ready ? '価格は変わることがあります' : '価格は取得の設定のあとに載ります'}</div><div class="fl">${ready ? `検索した条件の中の最安（税込・送料別）。店頭とは違います${data.compared ? `<br>前号比は <b>${data.compared}</b> 号と比べて` : ''}` : '絵はイメージです。価格はまだ入っていません'}</div><div>${ready ? credit : 'ガジェット愛好会'}</div></div>
+<div class="foot"><div class="tape">${ready ? '価格は変わることがあります' : '価格は取得の設定のあとに載ります'}</div><div class="fl">${ready ? `${MODE === 'ranking' ? '売れ筋の上位の品・その店の税込価格（送料別）・画像は各店の物' : '検索した条件の中の最安（税込・送料別）'}。店頭とは違います${data.compared ? `<br>前号比は <b>${data.compared}</b> 号と比べて` : ''}` : '絵はイメージです。価格はまだ入っていません'}</div><div>${ready ? credit : 'ガジェット愛好会'}</div></div>
 </body></html>`;
 }
 
@@ -398,7 +428,7 @@ function chrome() {
 }
 
 (async () => {
-  const ready = !!APPID || DEMO;
+  const ready = !!APPID || DEMO || !!RANK_FILE;
   const data = DEMO ? demo() : ready ? await collect() : placeholder();
   const count = data.hero.length + data.genres.reduce((a, g) => a + g.items.length, 0);
   // ジャンルごとに MIN_PER 品は取れないと出さない（前の週のチラシが残る）
@@ -412,7 +442,7 @@ function chrome() {
   const tmp = fs.mkdtempSync(path.join(outDir, '.flyer-tmp-'));
   const pageInfo = [{ id: 'cover', file: base + '.png' }];
   const pages = [{ name: base, html: html(data, ready) }].concat(data.full.map((g) => {
-    const its = g.items, hero = ready ? its.filter((it) => it.wow != null && it.wow < 0).slice(0, GP_HERO) : [];
+    const its = g.items, hero = ready ? gpHero(its, data.compared) : [];
     const hid = new Set(hero.map((h) => h.id));
     pageInfo.push({ id: g.id, n: g.n, file: `${base}-${g.id}.png`, hero: hero.map((h) => h.id), list: its.filter((it) => !hid.has(it.id)).slice(0, GP_LIST).map((it) => it.id) });
     return { name: `${base}-${g.id}`, html: html(data, ready, g) };
@@ -422,7 +452,7 @@ function chrome() {
       const htmlPath = path.resolve(tmp, pg.name + '.html');
       fs.writeFileSync(htmlPath, pg.html);
       const png = path.resolve(tmp, pg.name + '.png');
-      execFileSync(chrome(), ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-sandbox', '--force-device-scale-factor=1', `--window-size=${W},${H}`, `--screenshot=${png}`, 'file://' + htmlPath], { stdio: ['ignore', 'ignore', 'inherit'], timeout: 120000 });
+      execFileSync(chrome(), ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-sandbox', '--force-device-scale-factor=1', '--virtual-time-budget=20000', `--window-size=${W},${H}`, `--screenshot=${png}`, 'file://' + htmlPath], { stdio: ['ignore', 'ignore', 'inherit'], timeout: 120000 });
       const buf = fs.readFileSync(png); // PNG の IHDR で大きさを確かめる（撮り損ねを公開しない）
       if (buf.readUInt32BE(0) !== 0x89504e47 || buf.readUInt32BE(16) !== W || buf.readUInt32BE(20) !== H) throw new Error(`${pg.name}.png の大きさが違う（${buf.readUInt32BE(16)}×${buf.readUInt32BE(20)}）`);
     }
