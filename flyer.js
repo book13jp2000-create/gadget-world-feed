@@ -1,7 +1,7 @@
 // 週刊チラシ「ガジェット愛好会 週刊 ガジェット特価まつり」を作る（1448×2048 の PNG）。毎週土曜の朝に Actions が動かす（flyer.yml）。
 // 11/10 本人：量販店のチラシ風に、PCパーツだけでなく家電も含めたガジェット全般をジャンル別に、にぎやかに、絵入りで。
 // 11/10 夕 本人「2を作りましょう」（店のチラシは使わず、自作のチラシをもっと本物の家電量販店のチラシらしく）：
-//  ・上に「今週の目玉」の帯（全ジャンルから先週比の下げが大きい 3 品を大きく）と、ガジェ愛会員限定の「おふざけクーポン」（本物の割引ではない）
+//  ・上に「今週の目玉」の帯（全ジャンルから先週比の下げが大きい 3 品を大きく）（11/16 本人「おふざけ枠を消す」→ おふざけ券は外した）
 //  ・8 ジャンル × 6 品（1 つ目がジャンルの目玉）。候補（下の GENRES）の今週の最安値を取り、先週より下がった割合の大きい順
 //  ・チラシの言葉と飾り：「お一人様1点限り」「数量限定」「先週比 ▼◯%」のギザギザ、「底値?」「値下がり」のシール、赤い大きな価格と小さな「〜」「税込」、斜めの帯
 //  ・価格は Yahoo!ショッピングの商品検索（v3）。RAKUTEN_APP_ID があれば楽天市場も見て安い方（出典を小さく出す）
@@ -414,7 +414,7 @@ body{width:${W}px;height:${H}px;font-family:"Hiragino Sans","Hiragino Kaku Gothi
 <div class="burst b1">${ready && maxDrop != null ? `<b>前号比</b><span>最大<br>${Math.abs(maxDrop) < 1 ? Math.abs(maxDrop).toFixed(1) : Math.abs(maxDrop).toFixed(0)}%</span><b>値下がり</b>` : gp ? `<b>${esc(gp.n.length > 6 ? 'このジャンル' : gp.n)}</b><span>${count}品</span><b>${ready ? 'ぎっしり' : '掲載予定'}</b>` : `<b>${data.genres.length}ジャンル</b><span>${count}品</span><b>${ready ? 'ぎっしり' : '掲載予定'}</b>`}</div>
 <div class="ribbon">毎週土曜更新</div></div>
 <div class="hero"><div class="hl">${gp ? 'このジャンルの目玉' : '今週の目玉'}</div>${heroes}
-${DEMO ? '<div class="coupon mbig"><b>見本</b><span>価格は作り物</span></div>' : ''}<div class="coupon${DEMO ? ' hide' : ''}"><div class="ct">✂ おふざけ券（割引なし）</div><div class="cn">100<small>%</small></div><div class="cs">集会に来ると<br>楽しさ <b>100%</b> 増量</div><div class="cj">ガジェ愛の冗談の券。お店では使えません</div></div></div>
+${DEMO ? '<div class="coupon mbig"><b>見本</b><span>価格は作り物</span></div>' : ''}</div>
 ${gp ? `<div class="gpl" style="--gc:${gp.c};grid-template-rows:repeat(${Math.max(4, Math.ceil(data.genres[0].items.length / 2))},1fr) 30px">${data.genres[0].items.map((it, i) => item(it, i + 1)).join('')}${DEMO ? '<b class="gpm">見本・架空価格</b>' : ''}<div class="gpn">${tileNote}</div></div>` : `<div class="grid">${tiles}</div>`}
 ${ready ? (DEMO ? '<div class="mtape">見本：価格は作り物です（並びの確認用）。公開しません</div>' : '') : ''}
 <div class="foot"><div class="tape">${ready ? '価格は変わることがあります' : '価格は取得の設定のあとに載ります'}</div><div class="fl">${ready ? `${MODE === 'ranking' ? '売れ筋の上位の品・その店の税込価格（送料別）・画像は各店の物' : '検索した条件の中の最安（税込・送料別）'}。店頭とは違います${data.compared ? `<br>前号比は <b>${data.compared}</b> 号と比べて` : ''}` : '絵はイメージです。価格はまだ入っていません'}</div><div>${ready ? credit : 'ガジェット愛好会'}</div></div>
