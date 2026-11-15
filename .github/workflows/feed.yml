@@ -1,5 +1,5 @@
 # 株価などを取って GitHub Pages に出す（公開リポジトリ gadget-world-feed で動かす）
-# 読む側：VRChat のワールド（https://book13jp2000-create.github.io/gadget-world-feed/stocks.json）
+# 読む側：VRChat のワールド（https://book13jp2000-create.github.io/gadget-world-feed/stocks.json・news.json など）
 name: feed
 on:
   schedule:
@@ -41,6 +41,22 @@ jobs:
             for g in pc sp pcs audio camera game home kitchen; do git show FETCH_HEAD:flyer-$g.png > site/flyer-$g.png 2>/dev/null || rm -f site/flyer-$g.png; done
             git show FETCH_HEAD:flyer.json > site/flyer.json 2>/dev/null || rm -f site/flyer.json
           fi
+      # 流れるニュース（11/15 本人承認）。RSS の負担を考え、公開中の news.json が 55 分より新しければ取り直さずにそのまま載せる。
+      # 取れなかった回・見出しの無いジャンルがある回は、公開中の物を載せ直す（Pages は毎回まるごと置き換わるため）。失敗してもほかの公開は止めない
+      - name: news.json
+        continue-on-error: true
+        run: |
+          # ?t= で Pages のキャッシュを避けて、公開中の物を取る（Codex のチェック）
+          curl -fsS --max-time 20 "https://book13jp2000-create.github.io/gadget-world-feed/news.json?t=$(date +%s)" -o prev-news.json || rm -f prev-news.json
+          # 公開中の物の古さ（分）。無い・形が違う・日時が読めない・未来の日時は 999999（＝取り直す、載せ直さない）
+          age=999999
+          if [ -f prev-news.json ]; then age=$(node -e "try{const j=require('./prev-news.json');const t=Date.parse(j.updated);const a=Math.floor((Date.now()-t)/60000);console.log(j.v!==1||j.sample||!Number.isFinite(a)||a<0?999999:a)}catch(e){console.log(999999)}"); fi
+          echo "公開中の news.json は ${age} 分前（999999＝無い・使えない）"
+          if [ "$age" -ge 55 ]; then
+            if node news.js site; then echo "news.json を作り直した"; else echo "::warning::news.js が失敗した"; fi
+          fi
+          if [ ! -f site/news.json ] && [ -f prev-news.json ] && [ "$age" -lt 999999 ]; then cp prev-news.json site/news.json; echo "公開中の news.json を載せ直した"; fi
+          if [ -f site/news.json ]; then ls -l site/news.json; else echo "::warning::news.json は今回載らない（ワールドの帯は「準備中」と出す）"; fi
       - run: cp index.html site/ 2>/dev/null || true
       - uses: actions/upload-pages-artifact@v3
         with:
