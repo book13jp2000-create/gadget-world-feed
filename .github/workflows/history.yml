@@ -1,0 +1,41 @@
+# 株価の長い履歴（1年・5年・全期間。history.js）を1日1回取り、data ブランチに置く。終わったら feed（Pages）を動かす（11/16）
+name: history
+on:
+  schedule:
+    - cron: '23 22 * * *' # 日本時間 7:23（米国市場の終わりの後）
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: history
+  cancel-in-progress: false
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: data ブランチを取り出す（無ければ作る）
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            git worktree add data FETCH_HEAD
+          else
+            git worktree add --detach data && (cd data && git checkout --orphan data && git rm -rfq . )
+          fi
+      - name: 取る
+        run: node history.js data
+      - name: data ブランチに保存
+        run: |
+          cd data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stocks-1y.json stocks-5y.json stocks-max.json
+          git commit -m "history $(date -u +%F)" || exit 0
+          git push origin HEAD:data
+      - name: Pages を作り直す
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run feed.yml --ref ${{ github.ref_name }}
