@@ -10,10 +10,10 @@ const fs = require('fs');
 const path = require('path');
 
 // 11/10 本人「日本語で」→ j（板に出す名前）を足した。型番だけの物は n と同じ
-// 品目：検索語・名前に必ず含む語（付属品や別の型番を除く）・価格の下限と上限（円。中古・部品・誤登録を除く）
+// 品目：検索語・名前に必ず含む語（few：売っている店が少ないので 1 件からでも載せる）・（付属品や別の型番を除く）・価格の下限と上限（円。中古・部品・誤登録を除く）
 const PARTS = [
   // グラボ
-  { id: 'rtx5090', n: 'RTX 5090', q: 'RTX 5090 グラフィックボード', re: /RTX\s*5090(?!\s*D)(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 250000, max: 1200000 },
+  { id: 'rtx5090', n: 'RTX 5090', q: 'RTX 5090 グラフィックボード', few: true, re: /RTX\s*5090(?!\s*D)(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 250000, max: 1200000 },
   { id: 'rtx5080', n: 'RTX 5080', q: 'RTX 5080 グラフィックボード', re: /RTX\s*5080(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 120000, max: 600000 },
   { id: 'rtx5070ti', n: 'RTX 5070 Ti', q: 'RTX 5070 Ti グラフィックボード', re: /RTX\s*5070\s*Ti(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 90000, max: 400000 },
   { id: 'rtx5070', n: 'RTX 5070', q: 'RTX 5070 グラフィックボード', re: /RTX\s*5070(?!\s*Ti(?![A-Z]))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 300000 },
@@ -23,24 +23,24 @@ const PARTS = [
   { id: 'rx9070', n: 'RX 9070', q: 'Radeon RX 9070 グラフィックボード', re: /RX\s*9070(?!\s*(XT|GRE))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 250000 },
   { id: 'rx9060xt', n: 'RX 9060 XT', q: 'Radeon RX 9060 XT', re: /RX\s*9060\s*XT(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 35000, max: 150000 },
   // 11/17 本人「品目を増やしてほしい」：一つ前の世代（RTX 40）
-  { id: 'rtx4070tis', n: 'RTX 4070 Ti SUPER', q: 'RTX 4070 Ti SUPER グラフィックボード', re: /RTX\s*4070\s*Ti\s*SUPER/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 80000, max: 300000 },
-  { id: 'rtx4070s', n: 'RTX 4070 SUPER', q: 'RTX 4070 SUPER グラフィックボード', re: /RTX\s*4070\s*SUPER/i, not: /Ti|ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 250000 },
-  { id: 'rtx4070', n: 'RTX 4070', q: 'RTX 4070 グラフィックボード', re: /RTX\s*4070(?!\s*(Ti|SUPER))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 50000, max: 200000 },
-  { id: 'rtx4060ti', n: 'RTX 4060 Ti', q: 'RTX 4060 Ti グラフィックボード', re: /RTX\s*4060\s*Ti(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 40000, max: 150000 },
-  { id: 'rtx4060', n: 'RTX 4060', q: 'RTX 4060 グラフィックボード', re: /RTX\s*4060(?!\s*Ti(?![A-Z]))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 30000, max: 120000 },
+  { id: 'rtx4070tis', n: 'RTX 4070 Ti SUPER', q: 'RTX 4070 Ti SUPER', few: true, re: /RTX\s*4070\s*Ti\s*SUPER/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 80000, max: 300000 },
+  { id: 'rtx4070s', n: 'RTX 4070 SUPER', q: 'GeForce RTX 4070 SUPER', few: true, re: /RTX\s*4070\s*SUPER/i, not: /Ti|ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 60000, max: 250000 },
+  { id: 'rtx4070', n: 'RTX 4070', q: 'GeForce RTX 4070 12GB', few: true, re: /RTX\s*4070(?!\s*(Ti|SUPER))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 50000, max: 200000 },
+  { id: 'rtx4060ti', n: 'RTX 4060 Ti', q: 'RTX 4060 Ti', few: true, re: /RTX\s*4060\s*Ti(?![A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 40000, max: 150000 },
+  { id: 'rtx4060', n: 'RTX 4060', q: 'GeForce RTX 4060 8GB', few: true, re: /RTX\s*4060(?!\s*Ti(?![A-Z]))(?![0-9A-Z])/i, not: /ノート|PC本体|デスクトップPC|ゲーミングPC|搭載PC|BTO/i, min: 30000, max: 120000 },
   // CPU
   { id: '9950x3d', n: 'Ryzen 9 9950X3D', q: 'Ryzen 9 9950X3D BOX', re: /9950X3D(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 80000, max: 300000 },
   { id: '9800x3d', n: 'Ryzen 7 9800X3D', q: 'Ryzen 7 9800X3D BOX', re: /9800X3D(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 50000, max: 200000 },
   { id: '9700x', n: 'Ryzen 7 9700X', q: 'Ryzen 7 9700X BOX', re: /9700X(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード|9700X3D/i, min: 35000, max: 150000 },
   { id: '9600x', n: 'Ryzen 5 9600X', q: 'Ryzen 5 9600X BOX', re: /9600X(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   { id: '285k', n: 'Core Ultra 9 285K', q: 'Core Ultra 9 285K BOX', re: /285K(?![0-9A-Z])/i, not: /285KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 70000, max: 250000 },
-  { id: '265k', n: 'Core Ultra 7 265K', q: 'Core Ultra 7 265K BOX', re: /265K(?![0-9A-Z])/i, not: /265KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 35000, max: 150000 },
-  { id: '245k', n: 'Core Ultra 5 245K', q: 'Core Ultra 5 245K BOX', re: /245K(?![0-9A-Z])/i, not: /245KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
+  { id: '265k', n: 'Core Ultra 7 265K', q: 'Core Ultra 7 265K', few: true, re: /265K(?![0-9A-Z])/i, not: /265KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 35000, max: 150000 },
+  { id: '245k', n: 'Core Ultra 5 245K', q: 'Core Ultra 5 245K', few: true, re: /245K(?![0-9A-Z])/i, not: /245KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   // 11/17：一つ前の世代（Ryzen 7000・Core 第14世代）
   { id: '7800x3d', n: 'Ryzen 7 7800X3D', q: 'Ryzen 7 7800X3D BOX', re: /7800X3D(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 40000, max: 150000 },
   { id: '7700', n: 'Ryzen 7 7700', q: 'Ryzen 7 7700 BOX', re: /Ryzen\s*7\s*7700(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 25000, max: 100000 },
   { id: '7600', n: 'Ryzen 5 7600', q: 'Ryzen 5 7600 BOX', re: /Ryzen\s*5\s*7600(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 18000, max: 80000 },
-  { id: '14900k', n: 'Core i9-14900K', q: 'Core i9 14900K BOX', re: /14900K(?![0-9A-Z])/i, not: /14900KF|14900KS|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 50000, max: 200000 },
+  { id: '14900k', n: 'Core i9-14900K', q: 'Core i9 14900K', few: true, re: /14900K(?![0-9A-Z])/i, not: /14900KF|14900KS|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 50000, max: 200000 },
   { id: '14700k', n: 'Core i7-14700K', q: 'Core i7 14700K BOX', re: /14700K(?![0-9A-Z])/i, not: /14700KF|PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 40000, max: 150000 },
   { id: '14400f', n: 'Core i5-14400F', q: 'Core i5 14400F BOX', re: /14400F(?![0-9A-Z])/i, not: /PC本体|デスクトップPC|ゲーミングPC|搭載|BTO|セット|マザーボード/i, min: 15000, max: 70000 },
   // メモリ（デスクトップ用の2枚組）・SSD（M.2 NVMe）
@@ -60,8 +60,8 @@ const PARTS = [
   { id: 'aio360', j: '簡易水冷 360mm', n: 'AIO Cooler 360mm', q: '簡易水冷 CPUクーラー 360mm', re: /360\s*mm|360mm/i, not: /PC本体|ファン単体|ラジエーターのみ/i, min: 8000, max: 60000 },
   { id: 'mon27q', j: '27型 WQHD 165Hz以上', n: '27in WQHD 165Hz+', q: 'ゲーミングモニター 27インチ WQHD 165Hz', re: /27[\s\S]*(WQHD|2560)[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz|(WQHD|2560)[\s\S]*27[\s\S]*(1[6-9][0-9]|2[0-9]{2})\s*Hz/i, not: /PC本体|中古|アーム単体/i, min: 20000, max: 150000 },
   // 11/17：Mac（いちばん下の構成の新品）
-  { id: 'macmini-m4', j: 'Mac mini（M4）', n: 'Mac mini M4', q: 'Mac mini M4 2024', re: /Mac\s*mini[\s\S]*M4|M4[\s\S]*Mac\s*mini/i, not: /M4\s*Pro|中古|整備済|ケース|スタンド|ドック|ハブ|カバー|フィルム|ケーブル/i, min: 70000, max: 250000 },
-  { id: 'mba13-m4', j: 'MacBook Air 13（M4）', n: 'MacBook Air 13 M4', q: 'MacBook Air 13インチ M4', re: /MacBook\s*Air[\s\S]*M4|M4[\s\S]*MacBook\s*Air/i, not: /15|中古|整備済|ケース|カバー|フィルム|スリーブ|キーボードカバー|ハブ/i, min: 120000, max: 350000 },
+  { id: 'macmini-m4', j: 'Mac mini（M4）', n: 'Mac mini M4', q: 'Mac mini M4', few: true, re: /Mac\s*mini[\s\S]*M4|M4[\s\S]*Mac\s*mini/i, not: /M4\s*Pro|中古|整備済|ケース|スタンド|ドック|ハブ|カバー|フィルム|ケーブル/i, min: 70000, max: 250000 },
+  { id: 'mba13-m4', j: 'MacBook Air 13（M4）', n: 'MacBook Air 13 M4', q: 'MacBook Air M4', few: true, re: /MacBook\s*Air[\s\S]*M4|M4[\s\S]*MacBook\s*Air/i, not: /15|中古|整備済|ケース|カバー|フィルム|スリーブ|キーボードカバー|ハブ/i, min: 120000, max: 350000 },
 ];
 const PREV_FILE = process.env.PREV_FILE || '';
 const DAYS = 30;

@@ -82,7 +82,9 @@ async function robustLowest(appid, spec) {
   if (all.length === 0) return null;
   // 基準の値段：おすすめ順（-score）の上位で条件に合う物の中央値。3件に満たないときは全部の中央値（それも3件に満たなければ載せない）
   const ref = byScore.filter((h) => fits(h, spec)).map((h) => Number(h.price));
-  const base = ref.length >= 3 ? ref : all.length >= 3 ? all.map((h) => Number(h.price)) : null;
+  // 11/17：few（売っている店が少ない前の世代・Mac）は 1 件からでも載せる
+  const need = spec.few ? 1 : 3;
+  const base = ref.length >= need ? ref : all.length >= need ? all.map((h) => Number(h.price)) : null;
   if (!base) return null;
   const med = median(base);
   const band = all.filter((h) => Number(h.price) >= med * 0.6 && Number(h.price) <= med * 1.8);
