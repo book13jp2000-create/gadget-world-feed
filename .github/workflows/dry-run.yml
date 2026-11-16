@@ -13,6 +13,7 @@ jobs:
       - name: PCパーツを試す
         env:
           YAHOO_APPID: ${{ secrets.YAHOO_APPID }}
+          PICK_DEBUG: '1' # 取れなかった品目の検索結果の上位を出す（確かめ用）
         run: |
           node parts.js dry
           node -e "const j=require('./dry/parts.json');for(const i of j.items)console.log([i.j||i.n,i.p,i.shop,(i.pn||'').slice(0,70)].join(' | '))"

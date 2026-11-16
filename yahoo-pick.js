@@ -78,6 +78,7 @@ async function robustLowest(appid, spec) {
   const cheap = await search(appid, spec, '+price', 1);
   const seen = new Set(); const all = [];
   for (const h of byScore.concat(cheap)) { const k = h.code || h.url || h.name; if (seen.has(k)) continue; seen.add(k); if (fits(h, spec)) all.push(h); }
+  if (process.env.PICK_DEBUG && all.length < 3) console.error(`[debug] ${spec.id || spec.q}: 合う ${all.length} 件／検索 ${byScore.length}+${cheap.length} 件。上位：` + byScore.slice(0, 8).map((h) => `${h.price} ${String(h.name || '').normalize('NFKC').slice(0, 70)}`).join(' ｜ '));
   if (all.length === 0) return null;
   // 基準の値段：おすすめ順（-score）の上位で条件に合う物の中央値。3件に満たないときは全部の中央値（それも3件に満たなければ載せない）
   const ref = byScore.filter((h) => fits(h, spec)).map((h) => Number(h.price));
