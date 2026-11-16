@@ -33,6 +33,12 @@ jobs:
           if git fetch --depth=1 origin data 2>/dev/null; then
             git show FETCH_HEAD:parts.json > site/parts.json 2>/dev/null && node -e "const j=require('./site/parts.json'); if(j.v!==1||j.sample) process.exit(1)" || rm -f site/parts.json
           fi
+      # PCパーツの長い履歴（parts.yml が data ブランチに置く。11/16）
+      - name: parts-1y/5y/max.json を data ブランチから
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            for r in 1y 5y max; do git show FETCH_HEAD:parts-$r.json > site/parts-$r.json 2>/dev/null && node -e "const j=require('./site/parts-$r.json'); if(j.v!==1) process.exit(1)" || rm -f site/parts-$r.json; done
+          fi
       # 株価の長い履歴（history.yml が1日1回 data ブランチに置く。11/16）。無ければ載せない（ワールドのグラフは1か月だけ）
       - name: stocks-1y/5y/max.json を data ブランチから
         run: |

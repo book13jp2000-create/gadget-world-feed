@@ -6,6 +6,7 @@ VRChat のワールドで読む小さなデータを、GitHub Actions で定期�
 |---|---|---|
 | `stocks.json` | 米国テック株（20）・日本のテック・半導体株（20）・ガジェット関連 ETF（14）・主要な指数と為替（IDX、11）・海外のテック株（INTL、10）の現在値・前日比％・直近5日と約1か月の終値（Yahoo Finance）。11/16 から IDX・INTL を足した（前のワールドの板は先頭の3面・各10行だけを出すので、US・JP・ETF の順と先頭10行は前のまま） | 米国市場の時間帯は15分ごと、ほかは3時間ごと |
 | `stocks-1y.json`・`stocks-5y.json`・`stocks-max.json` | 株価ボードのグラフの長い期間（1年＝週ごと、5年＝月ごと、全期間＝月ごと80点まで。stocks.json と同じ銘柄・順番）。`{ v:1, range, updated, groups:[{ id, items:[{ s, d0, d1, m:[終値] }] }] }`（調整後終値） | 1日1回（`history.yml`、日本時間 7:23）。data ブランチに置いて Pages に載せる |
+| `parts-1y.json`・`parts-5y.json`・`parts-max.json` | PCパーツのグラフの長い期間。本人が用意した過去の値段（`parts-history/*.csv`、書き方は `parts-history/README.md`）と Yahoo! の毎日の記録（data ブランチの `parts-archive.json`、消さずに貯める）をつないだ物（同じ日は Yahoo! を優先）。`{ v:1, range, items:[{ id, d0, d1, m:[円] }] }` | `parts.yml` のたび（1日1回と、CSV を push した時） |
 | `parts.json` | PCパーツ26品目の最安値（Yahoo!ショッピングの商品検索API、新品・在庫あり）と直近30日の動き | 1日1回（日本時間 8:37、`parts.yml`）。履歴の原本は `data` ブランチの `parts.json`。Actions の秘密の値 `YAHOO_APPID`（Yahoo!デベロッパーネットワークの Client ID）が要る。無いあいだは parts.json を出さない |
 
 | `flyer.png` | 週刊チラシ「ガジェット特価まつり」（1448×2048。8ジャンル×5品、先週より下がった割合の大きい順。絵は自作のイラスト `flyer-icons.js`） | 毎週土曜 7:07（`flyer.yml`）。`data` ブランチに置いて Pages に載せる。`YAHOO_APPID` が無いうちは価格の無い「準備中」のチラシ。`RAKUTEN_APP_ID` があれば楽天市場も見る |

@@ -135,5 +135,16 @@ function change30(hist, today) {
   if (sample) out.sample = true;
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'parts.json'), JSON.stringify(out));
+  // 11/16：毎日の値を消さずに貯める（parts-archive.json。parts-history.js が本人の過去データとつなぐ）。31日で捨てる parts.json の hist とは別
+  if (!sample) {
+    const af = path.join(outDir, 'parts-archive.json');
+    const arc = fs.existsSync(af) ? JSON.parse(fs.readFileSync(af, 'utf8')) : {};
+    for (const it of items) {
+      const m = new Map((arc[it.id] || []).map((x) => [x[0], x[1]]));
+      for (const [d, p] of it.hist) if (p > 0) m.set(d, p); // 前の31日分も入れる（初めての日）
+      arc[it.id] = [...m.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1));
+    }
+    fs.writeFileSync(af, JSON.stringify(arc));
+  }
   console.log(`${sample ? '見本' : ok + '/' + PARTS.length + ' 品目'} → ${path.join(outDir, 'parts.json')}`);
 })();
