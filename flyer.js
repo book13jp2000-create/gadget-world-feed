@@ -307,7 +307,14 @@ function issueDate() { const now = jstNow(); return new Date(now.getTime() + ((6
 const GP_HERO = 3, GP_LIST = 12;
 // ジャンルのページの目玉：前号と比べられる週は値下がりの大きい順、売れ筋モードで前号が無い週は売れ筋 1〜3 位（JSON の pages[].hero も同じ物）
 const gpHero = (its, compared) => MODE === 'ranking' && !compared ? its.slice(0, GP_HERO).map((it, i) => ({ ...it, top: i + 1 })) : its.filter((it) => it.wow != null && it.wow < 0).slice(0, GP_HERO);
+// 11/19 本人「codex案がすっきりしていていいですね。これでいきましょう」→ 見た目は flyer-note.js（週刊 売れ筋ノート）。前の赤と黄色のチラシは htmlLoud（FLYER_STYLE=loud で戻せる）
+const NOTE = require('./flyer-note.js');
 function html(data, ready, gp) {
+  if (process.env.FLYER_STYLE === 'loud') return htmlLoud(data, ready, gp);
+  if (gp) { const its = gp.items; const hero = ready ? gpHero(its, data.compared).map((it) => ({ ...it, g: gp.n, c: gp.c })) : []; const hid = new Set(hero.map((h) => h.id)); data = { ...data, hero, genres: [{ ...gp, items: its.filter((it) => !hid.has(it.id)).slice(0, GP_LIST) }] }; }
+  return NOTE.html(data, { ready, gp, issue: ymd(issueDate()), compared: data.compared, demo: DEMO, icons: ICONS, usePhotos: USE_PHOTOS, mode: MODE, rakuten: !!RAKUTEN });
+}
+function htmlLoud(data, ready, gp) {
   const now = jstNow();
   const d = issueDate(); // 号の日付：直近の土曜（土曜の朝に作る）
   const wd = '日月火水木金土'[d.getUTCDay()];

@@ -9,7 +9,7 @@ VRChat のワールドで読む小さなデータを、GitHub Actions で定期�
 | `parts-1y.json`・`parts-5y.json`・`parts-max.json` | PCパーツのグラフの長い期間。本人が用意した過去の値段（`parts-history/*.csv`、書き方は `parts-history/README.md`）と Yahoo! の毎日の記録（data ブランチの `parts-archive.json`、消さずに貯める）をつないだ物（同じ日は Yahoo! を優先）。`{ v:1, range, items:[{ id, d0, d1, m:[円] }] }` | `parts.yml` のたび（1日1回と、CSV を push した時） |
 | `parts.json` | PCパーツ26品目の最安値（Yahoo!ショッピングの商品検索API、新品・在庫あり）と直近30日の動き | 1日1回（日本時間 8:37、`parts.yml`）。履歴の原本は `data` ブランチの `parts.json`。Actions の秘密の値 `YAHOO_APPID`（Yahoo!デベロッパーネットワークの Client ID）が要る。無いあいだは parts.json を出さない |
 
-| `flyer.png` | 週刊チラシ「ガジェット特価まつり」（1448×2048。8ジャンル×5品、先週より下がった割合の大きい順。絵は自作のイラスト `flyer-icons.js`） | 毎週土曜 7:07（`flyer.yml`）。`data` ブランチに置いて Pages に載せる。`YAHOO_APPID` が無いうちは価格の無い「準備中」のチラシ。`RAKUTEN_APP_ID` があれば楽天市場も見る |
+| `flyer.png` | 週刊チラシ「週刊 売れ筋ノート」（1448×2048。表紙＝目玉3品＋8ジャンル×6品、ジャンルごとの A4＝目玉3品＋12品。売れ筋モードは Yahoo! の売れ筋順と商品画像。11/19 から見た目は `flyer-note.js`（Codex 案、生成りの紙）。前の赤と黄色のチラシは `FLYER_STYLE=loud` で戻せる） | 毎週土曜 7:07（`flyer.yml`）。`data` ブランチに置いて Pages に載せる。`YAHOO_APPID` が無いうちは価格の無い「準備中」のチラシ。`RAKUTEN_APP_ID` があれば楽天市場も見る |
 
 Web Services by Yahoo! JAPAN（https://developer.yahoo.co.jp/sitemap/）
 
