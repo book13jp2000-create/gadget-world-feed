@@ -54,11 +54,19 @@
   },
   {
    "id": "MK",
-   "label": "工作",
+   "label": "AV家電",
    "feeds": [
     {
-     "name": "GIGAZINE",
-     "url": "https://gigazine.net/news/rss_2.0/"
+     "name": "AV Watch",
+     "url": "https://av.watch.impress.co.jp/data/rss/1.0/avw/feed.rdf"
+    },
+    {
+     "name": "デジカメ Watch",
+     "url": "https://dc.watch.impress.co.jp/data/rss/1.0/dcw/feed.rdf"
+    },
+    {
+     "name": "家電 Watch",
+     "url": "https://kaden.watch.impress.co.jp/data/rss/1.0/kdw/feed.rdf"
     }
    ]
   },
@@ -72,5 +80,6 @@
     }
    ]
   }
- ]
+ ],
+ "_note_mk": "11/22 本人「ニュースも変えましょう」：ものづくりの島がオーディオ・カメラ・家電の島になったので、MK の記事を AV Watch・デジカメ Watch・家電 Watch に（id は MK のまま）"
 }
